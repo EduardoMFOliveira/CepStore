@@ -3,8 +3,8 @@ import { Store } from "./entities/Store";
 
 export const AppDataSource = new DataSource({
     type: "sqlite",
-    database: "database.sqlite", // Nome do arquivo do banco de dados
+    database: "database.sqlite",
     entities: [Store],
-    synchronize: true, // Cria automaticamente as tabelas (apenas para desenvolvimento)
+    synchronize: true,
     logging: true,
 });
