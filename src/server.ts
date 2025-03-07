@@ -7,7 +7,6 @@ import logger from './utils/logger';
 const app = express();
 const port = 3000;
 
-// Inicializa o banco de dados
 AppDataSource.initialize()
     .then(() => {
         logger.info("Banco de dados conectado");
@@ -16,7 +15,6 @@ AppDataSource.initialize()
         logger.error("Erro ao conectar ao banco de dados:", error);
     });
 
-// Rota para buscar lojas próximas
 app.get('/stores/nearby', async (req: Request, res: Response) => {
     const { cep } = req.query;
 
@@ -51,7 +49,6 @@ app.get('/stores/nearby', async (req: Request, res: Response) => {
     }
 });
 
-// Inicia o servidor
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
 });
