@@ -65,7 +65,7 @@ O servidor estará rodando em `http://localhost:3000`.
 - **URL**: `http://localhost:3000/stores/nearby?cep=<CEP>`
 - **Exemplo**:
   ```bash
-  curl "http://localhost:3000/stores/nearby?cep=50030170"
+  http://localhost:3000/stores/nearby?cep=50030170
   ```
 
 ### Resposta
