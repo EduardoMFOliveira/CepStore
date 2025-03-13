@@ -1,3 +1,4 @@
+// cep.service.ts
 import axios from 'axios';
 import logger from '../utils/logger';
 
@@ -12,23 +13,33 @@ interface CEPData {
 
 export async function fetchCEPData(cep: string): Promise<CEPData> {
   try {
-    const response = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+    // Passo 1: Busca dados básicos do CEP na ViaCEP
+    const viaCEPResponse = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
     
-    if (response.data.erro) {
+    if (viaCEPResponse.data.erro) {
       throw new Error('CEP não encontrado');
     }
 
-    return {
-        ...response.data,
-        latitude: parseFloat((-8.06 + Math.random() * 0.1).toFixed(6)),
-        longitude: parseFloat((-34.87 + Math.random() * 0.1).toFixed(6))
-      };
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.error(`Erro na API ViaCEP: ${error.message}`);
-    } else {
-      logger.error('Erro desconhecido na API ViaCEP:', error);
+    // Passo 2: Monta o endereço completo para geocoding
+    const endereco = `${viaCEPResponse.data.logradouro}, ${viaCEPResponse.data.localidade}, ${viaCEPResponse.data.uf}`;
+
+    // Passo 3: Busca coordenadas reais no OpenStreetMap
+    const osmResponse = await axios.get(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}`
+    );
+
+    if (!osmResponse.data[0]) {
+      throw new Error('Coordenadas não encontradas para este CEP');
     }
-    throw error; 
+
+    // Passo 4: Retorna dados com coordenadas reais
+    return {
+      ...viaCEPResponse.data,
+      latitude: parseFloat(osmResponse.data[0].lat),
+      longitude: parseFloat(osmResponse.data[0].lon),
+    };
+  } catch (error) {
+    logger.error(`Erro na busca do CEP ${cep}: ${error}`);
+    throw error;
   }
 }
