@@ -44,9 +44,6 @@ export class MelhorEnvioClient {
     ];
   }
 
-  /**
-   * Chama a API de cálculo de frete e retorna todas as opções fornecidas.
-   */
   async calculateShipping(
     from: string,
     to: string,
@@ -66,43 +63,36 @@ export class MelhorEnvioClient {
       return this.parseShippingOptions(response.data);
     } catch (error) {
       this.logger.error(`Erro no cálculo de frete: ${error.message}`, error.stack);
-      // Em caso de falha, retorna placeholder
-      return [
-        {
-          type: 'Indisponível',
-          price: 0,
-          deliveryTime: 'Consulte-nos',
-        },
-      ];
+      return [];
     }
   }
 
-  /**
-   * Mapeia cada serviço retornado, usando custom_price e custom_delivery_time quando disponíveis.
-   */
   private parseShippingOptions(data: any[]): ShippingOption[] {
-    return data.map((option) => {
-      // Nome do serviço (por exemplo: "Melhor Envio PAC", "Melhor Envio Sedex", etc.)
-      const typeName = option.name ?? 'Serviço Desconhecido';
+    return data
+      .map((option) => {
+        const typeName = option.name ?? 'Serviço Desconhecido';
+        const priceValue = Number(option.custom_price ?? option.price ?? 0);
+        let deliveryStr: string;
 
-      // Preço: privilegia custom_price, depois price; default 0
-      const priceValue = Number(option.custom_price ?? option.price ?? 0);
+        if (option.custom_delivery_time != null) {
+          deliveryStr = `${option.custom_delivery_time} dias úteis`;
+        } else if (option.delivery_time != null) {
+          deliveryStr = `${option.delivery_time} dias úteis`;
+        } else {
+          deliveryStr = 'Consulte-nos';
+        }
 
-      // Prazo: usa custom_delivery_time > delivery_time > fallback
-      let deliveryStr: string;
-      if (option.custom_delivery_time != null) {
-        deliveryStr = `${option.custom_delivery_time} dias úteis`;
-      } else if (option.delivery_time != null) {
-        deliveryStr = `${option.delivery_time} dias úteis`;
-      } else {
-        deliveryStr = 'Consulte-nos';
-      }
-
-      return {
-        type: typeName,
-        price: priceValue,
-        deliveryTime: deliveryStr,
-      };
-    });
+        return {
+          type: typeName,
+          price: priceValue,
+          deliveryTime: deliveryStr,
+        };
+      })
+      .filter(option => 
+        option.price > 0 &&
+        option.deliveryTime !== 'Consulte-nos' &&
+        !option.type.includes('Indisponível')
+      )
+      .sort((a, b) => a.price - b.price); // Ordena por preço ascendente
   }
 }
