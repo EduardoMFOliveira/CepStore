@@ -54,18 +54,18 @@ npm install
 ### ⚙ Configuração do .env
 
 ```
-# Configurações Básicas
+GOOGLE_MAPS_API_KEY= (adicione sua key)
+MELHOR_ENVIO_ACCESS_TOKEN= (adicione seu token)
+DB_NAME=test.sqlite
 PORT=3000
-NODE_ENV=development
-DB_NAME=database.sqlite
+APP_NAME=CEP-Store
+PDV_RADIUS=(coloque o alcance da busca ou deixe em branco)
 
-# Integrações
-GOOGLE_MAPS_API_KEY=sua_chave_aqui
-MELHOR_ENVIO_ACCESS_TOKEN=seu_token_aqui
-
-# Regras de Negócio
-PDV_RADIUS=50
-PDV_SHIPPING_PRICE=15
+# Dimensões padrão para cálculo de fretes (edite para simular as dimenções do que você quer transportar)
+DEFAULT_PRODUCT_WIDTH=11
+DEFAULT_PRODUCT_HEIGHT=2
+DEFAULT_PRODUCT_LENGTH=16
+DEFAULT_PRODUCT_WEIGHT=0.3
 ```
 
 ```bash
