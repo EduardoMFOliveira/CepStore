@@ -39,7 +39,8 @@ export class GoogleMapsClient {
           origins: origin,
           destinations: destination,
           key: this.apiKey,
-          units: 'metric'
+          units: 'metric',
+          mode: 'driving'
         }
       });
 

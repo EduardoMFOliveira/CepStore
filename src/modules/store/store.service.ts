@@ -6,7 +6,6 @@ import { Store } from './entities/store.entity';
 import { ViaCEPClient } from '../../shared/clients/viacep.client';
 import { GoogleMapsClient } from '../../shared/clients/google-maps.client';
 import { MelhorEnvioClient } from '../../shared/clients/melhor-envio.client';
-import { DistanceUtil } from '../../shared/utils/distance.util';
 import { StoreResponseDto } from './dto/store-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { CacheUtil } from '../../shared/utils/cache.util';
@@ -76,17 +75,18 @@ export class StoreService {
             const origin = `${store.latitude},${store.longitude}`;
             const destination = `${userCoords.lat},${userCoords.lng}`;
             
+            // Novo cálculo com Google Maps
             const { distance, duration } = await this.googleMaps.calculateDistance(origin, destination);
             
-            const storeType = distance <= effectiveRadius ? 'PDV' : 'LOJA';
-            const shippingOptions = storeType === 'PDV'
-              ? this.getPDVShipping(duration)
+            const isPDV = distance <= effectiveRadius;
+            const shippingOptions = isPDV 
+              ? this.getPDVShippingOptions(duration) 
               : await this.getMelhorEnvioShipping(store.postalCode, cep);
 
             return {
               ...this.mapToDto(store),
-              distance: DistanceUtil.formatDistance(distance),
-              type: storeType,
+              distance: this.formatDistance(distance),
+              type: isPDV ? 'PDV' : 'LOJA',
               shippingOptions
             };
           } catch (error) {
@@ -100,23 +100,38 @@ export class StoreService {
       this.cache.set(cacheKey, filteredResults, 300);
       return filteredResults;
     } catch (error) {
-      this.logger.error(`Erro ao buscar lojas próximas: ${error.message}`);
+      this.logger.error(`Erro ao buscar lojas: ${error.message}`);
       throw error;
     }
   }
 
-  private getPDVShipping(durationSeconds: number): ShippingOptionDto[] {
+  private formatDistance(distance: number): string {
+    return distance < 1 
+      ? `${Math.round(distance * 1000)} metros` 
+      : `${distance.toFixed(1).replace('.', ',')} km`;
+  }
+
+  private getPDVShippingOptions(durationSeconds: number): ShippingOptionDto[] {
     const hours = durationSeconds / 3600;
-    let estimatedDays = Math.ceil(hours / 24);
-    if (estimatedDays < 1) estimatedDays = 1;
-    
+    let deliveryTime: string;
+
+    if (hours < 1) {
+      deliveryTime = 'Menos de 1 hora';
+    } else if (hours <= 8) {
+      deliveryTime = `${Math.ceil(hours)} hora${hours >= 2 ? 's' : ''}`;
+    } else {
+      const days = Math.ceil(hours / 24);
+      deliveryTime = `${days} dia${days > 1 ? 's' : ''} útil${days > 1 ? 'es' : ''}`;
+    }
+
     return [{
       type: 'Motoboy',
       price: this.PDV_SHIPPING_PRICE,
-      deliveryTime: `${estimatedDays} dia${estimatedDays > 1 ? 's' : ''} útil${estimatedDays > 1 ? 'es' : ''}`
+      deliveryTime: deliveryTime
     }];
   }
 
+  // Método do Melhor Envio mantido intacto
   private async getMelhorEnvioShipping(from: string, to: string) {
     try {
       const options = await this.melhorEnvio.calculateShipping(from, to);
