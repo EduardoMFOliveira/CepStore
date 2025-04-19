@@ -17,20 +17,24 @@ export class ViaCEPClient {
     try {
       const response = await axios.get(`${this.BASE_URL}/${cep}/json`);
       
-      if (response.data.erro) {
-        throw new Error('CEP não encontrado');
+      if (response.data.erro || !response.data.cep) {
+        throw new Error('CEP_INVALIDO');
       }
 
       return {
         cep: response.data.cep.replace('-', ''),
-        street: response.data.logradouro,
+        street: response.data.logradouro || 'Endereço não especificado',
         city: response.data.localidade,
         state: response.data.uf,
-        neighborhood: response.data.bairro
+        neighborhood: response.data.bairro || 'Bairro não especificado'
       };
     } catch (error) {
       this.logger.error(`Erro no ViaCEP: ${error.message}`);
-      throw new Error('Falha na consulta de CEP');
+      throw new Error(
+        error.message === 'CEP_INVALIDO' 
+          ? 'CEP inválido ou não encontrado' 
+          : 'Falha temporária na consulta de CEP'
+      );
     }
   }
 }

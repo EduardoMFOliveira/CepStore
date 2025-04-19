@@ -1,15 +1,15 @@
 // src/modules/store/dto/store-request.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, IsIn, Matches, Min, Max } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsIn, Min, Max } from 'class-validator';
+import { IsCEP } from 'brazilian-class-validator';
 
 export class StoreRequestDto {
   @ApiProperty({ 
     example: '01001000', 
-    description: 'CEP no formato 8 dígitos',
+    description: 'CEP válido no formato 8 dígitos',
     required: true 
   })
-  @IsString()
-  @Matches(/^\d{8}$/, { message: 'CEP inválido. Deve conter 8 dígitos' })
+  @IsCEP({ message: 'CEP inválido. Utilize o formato 00000000' })
   cep: string;
 
   @ApiProperty({
