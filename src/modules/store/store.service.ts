@@ -6,10 +6,9 @@ import { Store } from './entities/store.entity';
 import { ViaCEPClient } from '../../shared/clients/viacep.client';
 import { GoogleMapsClient } from '../../shared/clients/google-maps.client';
 import { MelhorEnvioClient } from '../../shared/clients/melhor-envio.client';
-import { StoreResponseDto } from './dto/store-response.dto';
+import { StoreResponseDto, ShippingOptionDto } from './dto/store-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { CacheUtil } from '../../shared/utils/cache.util';
-import { ShippingOptionDto } from './dto/store-response.dto';
 
 @Injectable()
 export class StoreService {
@@ -46,21 +45,9 @@ export class StoreService {
     return stores.map(store => this.mapToDto(store));
   }
 
-  private mapToDto(store: Store): StoreResponseDto {
-    return {
-      name: store.name,
-      city: store.city,
-      postalCode: store.postalCode,
-      type: store.type,
-      distance: '',
-      shippingOptions: []
-    };
-  }
-
   async findNearbyStores(cep: string, radius?: number): Promise<StoreResponseDto[]> {
     const effectiveRadius = radius ?? this.PDV_RADIUS;
     const cacheKey = `stores_${cep}_${effectiveRadius}`;
-    
     const cached = this.cache.get<StoreResponseDto[]>(cacheKey);
     if (cached) return cached;
 
@@ -74,10 +61,8 @@ export class StoreService {
           try {
             const origin = `${store.latitude},${store.longitude}`;
             const destination = `${userCoords.lat},${userCoords.lng}`;
-            
-            // Novo cálculo com Google Maps
             const { distance, duration } = await this.googleMaps.calculateDistance(origin, destination);
-            
+
             const isPDV = distance <= effectiveRadius;
             const shippingOptions = isPDV 
               ? this.getPDVShippingOptions(duration) 
@@ -96,18 +81,29 @@ export class StoreService {
         })
       );
 
-      const filteredResults = results.filter(r => r !== null);
-      this.cache.set(cacheKey, filteredResults, 300);
-      return filteredResults;
+      const filtered = results.filter(r => r !== null) as StoreResponseDto[];
+      this.cache.set(cacheKey, filtered, 300);
+      return filtered;
     } catch (error) {
       this.logger.error(`Erro ao buscar lojas: ${error.message}`);
       throw error;
     }
   }
 
+  private mapToDto(store: Store): StoreResponseDto {
+    return {
+      name: store.name,
+      city: store.city,
+      postalCode: store.postalCode,
+      type: store.type,
+      distance: '',
+      shippingOptions: []
+    };
+  }
+
   private formatDistance(distance: number): string {
-    return distance < 1 
-      ? `${Math.round(distance * 1000)} metros` 
+    return distance < 1
+      ? `${Math.round(distance * 1000)} metros`
       : `${distance.toFixed(1).replace('.', ',')} km`;
   }
 
@@ -127,15 +123,17 @@ export class StoreService {
     return [{
       type: 'Motoboy',
       price: this.PDV_SHIPPING_PRICE,
-      deliveryTime: deliveryTime
+      deliveryTime
     }];
   }
 
-  // Método do Melhor Envio mantido intacto
-  private async getMelhorEnvioShipping(from: string, to: string) {
+  /**
+   * Agora retorna todas as opções do Melhor Envio, sem filtro restritivo.
+   */
+  private async getMelhorEnvioShipping(from: string, to: string): Promise<ShippingOptionDto[]> {
     try {
-      const options = await this.melhorEnvio.calculateShipping(from, to);
-      return options.filter(opt => ['PAC', 'Sedex'].includes(opt.type));
+      // retorna todas as modalidades (PAC, Sedex, etc.) já mapeadas pelo client
+      return await this.melhorEnvio.calculateShipping(from, to);
     } catch (error) {
       this.logger.error(`Erro Melhor Envio: ${error.message}`);
       return [{
